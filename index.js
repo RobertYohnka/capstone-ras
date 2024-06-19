@@ -6,7 +6,6 @@ const {
     createAssignment,
     destroyAssignment,
     authenticate,
-    findUserWithToken,
     fetchUsers,
     fetchDepartments,
     fetchAssignments
@@ -35,14 +34,14 @@ app.get('/api/departments', async (req, res, next) => {
 
 app.get('/api/assignments/:user_id', async (req, res, next) => {
     try {
-        res.send(await fetchAssignments());
+        res.send(await fetchAssignments(req.params.user_id));
     }
     catch (ex) {
         next(ex);
     }
 });
 
-app.post('api/users/:user_id/assignments', async (req, res, next) => {
+app.post('/api/users/:user_id/assignments', async (req, res, next) => {
     try {
         res.status(201).send(await createAssignment({ user_id: req.params.user_id, dept_id: req.body.dept_id }));
     }
@@ -67,13 +66,13 @@ app.use((err, req, res, next) => {
 
 const init = async () => {
     console.log('connecting to the database');
-    // const port = process.env.PORT || 3000;
+    const port = process.env.PORT || 3000;
     await client.connect();
     console.log('connected to database');
     await createTables();
     console.log('tables created');
 
-    const [chris, hayli, amanda, sarah, emma, fran, jill, pathology, dermatology, urology, emergMedicine, neurology, obGyn] = await Promise.all([
+    const [chris, hayli, amanda, sarah, emma, fran, jill, pathology, dermatology, urology, emergMedicine, neurology, obGyn, surgery] = await Promise.all([
         createUser({ username: 'chris', password: 'ch_pw' }),
         createUser({ username: 'hayli', password: 'ha_pw' }),
         createUser({ username: 'amanda', password: 'am_pw' }),
@@ -99,6 +98,7 @@ const init = async () => {
         createAssignment({ user_id: sarah.id, dept_id: emergMedicine.id }),
         createAssignment({ user_id: emma.id, dept_id: neurology.id }),
         createAssignment({ user_id: fran.id, dept_id: obGyn.id }),
+        createAssignment({ user_id: jill.id, dept_id: surgery.id }),
     ]);
 
     console.log(await fetchAssignments());

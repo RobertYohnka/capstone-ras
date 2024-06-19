@@ -1,5 +1,5 @@
 const pg = require('pg');
-const client = new pg.Client(process.env.DATABASE_URL || 'postgres://localhost/acme_auth_store_db');
+const client = new pg.Client(process.env.DATABASE_URL || 'postgres://localhost/ras_community_db');
 const uuid = require('uuid');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -13,10 +13,11 @@ const createTables = async () => {
         DROP TABLE IF EXISTS assignments;
         DROP TABLE IF EXISTS users;
         DROP TABLE IF EXISTS departments;
+        
         CREATE TABLE users(
         id UUID PRIMARY KEY,
         username VARCHAR(20) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL
+        password VARCHAR(255) NOT NULL,
         jobTitle VARCHAR(20),
         email EMAIL,
         phoneNumber VARCHAR(10),
@@ -25,7 +26,7 @@ const createTables = async () => {
         id UUID PRIMARY KEY,
         name VARCHAR(20) UNIQUE NOT NULL,
         deptChair VARCHAR(20),
-        deptChairEmail EMAIL,
+        deptChairEmail VARCHAR(20),
         deptChairPhone VARCHAR(10),
         deptAdmin VARCHAR(20),
         deptAdminEmail EMAIL,
@@ -36,7 +37,7 @@ const createTables = async () => {
         id UUID PRIMARY KEY,
         user_id UUID REFERENCES users(id) NOT NULL,
         dept_id UUID REFERENCES departments(id) NOT NULL,
-        CONSTRAINT unique_user_id_and_dept_id UNIQUE (user_id, dept_id)
+        CONSTRAINT unique_user_id_and_dept_id UNIQUE (user_id, dept_id),
         );
     `;
     await client.query(SQL);
@@ -87,28 +88,28 @@ const authenticate = async ({ username, password }) => {
     return { token };
 };
 
-const findUserWithToken = async (token) => {
-    let id;
-    try {
-        const payload = await jwt.verify(token, JWT);
-        id = payload.id;
-    }
-    catch (ex) {
-        const error = Error('bad token');
-        error.status = 401;
-        throw error;
-    }
-    const SQL = `
-        SELECT id, username FROM users WHERE id=$1
-    `;
-    const response = await client.query(SQL, [id]);
-    if (!response.rows.length) {
-        const error = Error('bad token');
-        error.status = 401;
-        throw error;
-    }
-    return response.rows[0];
-};
+// const findUserWithToken = async (token) => {
+//     let id;
+//     try {
+//         const payload = await jwt.verify(token, JWT);
+//         id = payload.id;
+//     }
+//     catch (ex) {
+//         const error = Error('bad token');
+//         error.status = 401;
+//         throw error;
+//     }
+//     const SQL = `
+//         SELECT id, username FROM users WHERE id=$1
+//     `;
+//     const response = await client.query(SQL, [id]);
+//     if (!response.rows.length) {
+//         const error = Error('bad token');
+//         error.status = 401;
+//         throw error;
+//     }
+//     return response.rows[0];
+// };
 
 const fetchUsers = async () => {
     const SQL = `
@@ -135,12 +136,13 @@ const fetchAssignments = async (user_id) => {
 };
 
 module.exports = {
+    client,
+    createTables,
     createUser,
     createDept,
     createAssignment,
     destroyAssignment,
     authenticate,
-    findUserWithToken,
     fetchUsers,
     fetchDepartments,
     fetchAssignments
