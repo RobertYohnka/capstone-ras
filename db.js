@@ -10,30 +10,72 @@ if (JWT === 'shhh') {
 
 const createTables = async () => {
     const SQL = `
-        DROP TABLE IF EXISTS assignments;
-        DROP TABLE IF EXISTS users;
-        DROP TABLE IF EXISTS departments;
-        
-        CREATE TABLE users(
+    DROP TABLE IF EXISTS assignments;
+    DROP TABLE IF EXISTS users;
+    DROP TABLE IF EXISTS departments;
+    DROP TABLE IF EXISTS roles;
+    DROP TABLE IF EXISTS investigators;
+    DROP TABLE IF EXISTS rasUnits;
+    DROP TABLE IF EXISTS schools;
+    
+    CREATE TABLE roles(
+        id UUID PRIMARY KEY,
+        roleName VARCHAR(20) UNIQUE NOT NULL,
+        mgmtYsNo BOOLEAN
+        );
+    
+    CREATE TABLE rasUnits(
+        id UUID PRIMARY KEY,
+        rasName VARCHAR(20) UNIQUE NOT NULL,
+        rasHead VARCHAR(20),
+        rasEmail VARCHAR(20),
+        rasWebsite VARCHAR(20)
+        );
+
+    CREATE TABLE users(
         id UUID PRIMARY KEY,
         username VARCHAR(20) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
+        empID VARCHAR(10),
         jobTitle VARCHAR(20),
+        jobRole VARCHAR(20) REFERENCES roles(roleName),
+        rasName VARCHAR(20) REFERENCES rasUnits(rasName),
         email VARCHAR(20),
         phoneNumber VARCHAR(10)
         );
-        CREATE TABLE departments(
+
+    CREATE TABLE investigators(
+        id UUID PRIMARY KEY,
+        usernme VARCHAR(20) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        empID VARCHAR(10),
+        invTitle VARCHAR(20),
+        email VARCHAR(20),
+        phoneNumber VARCHAR(10)
+        );
+        
+
+    CREATE TABLE schools(
+        id UUID PRIMARY KEY,
+        schoolName VARCHAR(20) UNIQUE NOT NULL,
+        schoolDean VARCHAR(20)
+        );
+
+    CREATE TABLE departments(
         id UUID PRIMARY KEY,
         name VARCHAR(20) UNIQUE NOT NULL,
+        deptID VARCHAR(10),
+        rasName VARCHAR(20) REFERENCES rasUnits(rasName),
         deptChair VARCHAR(20),
         deptChairEmail VARCHAR(20),
         deptChairPhone VARCHAR(10),
         deptAdmin VARCHAR(20),
         deptAdminEmail VARCHAR(20),
         deptAdminPhone VARCHAR(10),
-        schoolName VARCHAR(20)
+        schoolName VARCHAR(20) REFERENCES schools(schoolName)
         );
-        CREATE TABLE assignments(
+
+    CREATE TABLE assignments(
         id UUID PRIMARY KEY,
         user_id UUID REFERENCES users(id) NOT NULL,
         dept_id UUID REFERENCES departments(id) NOT NULL,
@@ -43,19 +85,19 @@ const createTables = async () => {
     await client.query(SQL);
 };
 
-const createUser = async ({ username, password, jobTitle, email, phoneNumber }) => {
+const createUser = async ({ username, password, empID, jobTitle, jobRole, rasName, email, phoneNumber }) => {
     const SQL = `
-        INSERT INTO users(id, username, password, jobTitle, email, phoneNumber) VALUES($1, $2, $3, $4, $5, $6) RETURNING *
+        INSERT INTO users(id, username, password, empID, jobTitle, jobRole, rasName, email, phoneNumber) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
     `;
-    const response = await client.query(SQL, [uuid.v4(), username, await bcrypt.hash(password, 5), jobTitle, email, phoneNumber]);
+    const response = await client.query(SQL, [uuid.v4(), username, await bcrypt.hash(password, 5), empID, jobTitle, rasName, jobRole, email, phoneNumber]);
     return response.rows[0];
 };
 
-const createDept = async ({ name, deptChair, deptChairEmail, deptChairPhone, deptAdmin, deptAdminEmail, deptAdminPhone, schoolName }) => {
+const createDept = async ({ name, deptID, rasName, deptChair, deptChairEmail, deptChairPhone, deptAdmin, deptAdminEmail, deptAdminPhone, schoolName }) => {
     const SQL = `
-        INSERT INTO departments(id, name, deptChair, deptChairEmail, deptChairPhone, deptAdmin, deptAdminEmail, deptAdminPhone, schoolName) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+        INSERT INTO departments(id, name, deptID, rasName, deptChair, deptChairEmail, deptChairPhone, deptAdmin, deptAdminEmail, deptAdminPhone, schoolName) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *
     `;
-    const response = await client.query(SQL, [uuid.v4(), name, deptChair, deptChairEmail, deptChairPhone, deptAdmin, deptAdminEmail, deptAdminPhone, schoolName]);
+    const response = await client.query(SQL, [uuid.v4(), name, deptID, rasName, deptChair, deptChairEmail, deptChairPhone, deptAdmin, deptAdminEmail, deptAdminPhone, schoolName]);
     return response.rows[0];
 };
 

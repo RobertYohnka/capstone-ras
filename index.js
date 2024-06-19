@@ -41,6 +41,20 @@ app.get('/api/assignments/:user_id', async (req, res, next) => {
     }
 });
 
+//add get request here for rasUnits
+
+//add get request here for investigators
+
+//add get request here for roles
+app.get('/api/roles', async (req, res, next) => {
+    try {
+        res.send(await fetchRoles());
+    }
+    catch (ex) {
+        next(ex);
+    }
+});
+
 app.post('/api/users/:user_id/assignments', async (req, res, next) => {
     try {
         res.status(201).send(await createAssignment({ user_id: req.params.user_id, dept_id: req.body.dept_id }));
