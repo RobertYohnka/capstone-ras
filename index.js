@@ -86,6 +86,7 @@ const init = async () => {
         createDept({ name: 'emergMedicine' }),
         createDept({ name: 'neurology' }),
         createDept({ name: 'obGyn' }),
+        createDept({ name: 'surgery' }),
     ]);
 
     console.log(await fetchUsers());

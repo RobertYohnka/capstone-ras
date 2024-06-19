@@ -19,8 +19,8 @@ const createTables = async () => {
         username VARCHAR(20) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         jobTitle VARCHAR(20),
-        email EMAIL,
-        phoneNumber VARCHAR(10),
+        email VARCHAR(20),
+        phoneNumber VARCHAR(10)
         );
         CREATE TABLE departments(
         id UUID PRIMARY KEY,
@@ -29,15 +29,15 @@ const createTables = async () => {
         deptChairEmail VARCHAR(20),
         deptChairPhone VARCHAR(10),
         deptAdmin VARCHAR(20),
-        deptAdminEmail EMAIL,
+        deptAdminEmail VARCHAR(20),
         deptAdminPhone VARCHAR(10),
-        schoolName VARCHAR(20),
+        schoolName VARCHAR(20)
         );
         CREATE TABLE assignments(
         id UUID PRIMARY KEY,
         user_id UUID REFERENCES users(id) NOT NULL,
         dept_id UUID REFERENCES departments(id) NOT NULL,
-        CONSTRAINT unique_user_id_and_dept_id UNIQUE (user_id, dept_id),
+        CONSTRAINT unique_user_id_and_dept_id UNIQUE (user_id, dept_id)
         );
     `;
     await client.query(SQL);
