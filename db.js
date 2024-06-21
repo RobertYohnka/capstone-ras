@@ -110,144 +110,72 @@ const createUser = async ({ username, password, empID, jobTitle, jobRole, rasNam
     return response.rows[0];
 };
 
-const seedData = async () => {
-    await createTables();
 
-    //seed schools
-    const schools = [
-        { schoolName: 'School of Medicine', schoolDean: 'Dean of Medicine' },
-        { schoolName: 'School of Public Health', schoolDean: 'Dean of Public Health' },
-        { schoolName: 'Arts & Sciences', schoolDean: 'Dean of Arts & Sciences' },
-        { schoolName: 'School of Nursing', schoolDean: 'Dean of Nursing' },
-        { schoolName: 'Primate Center', schoolDean: 'Dean of Primate Center' }
-    ];
 
-    //seed departments
-    const departments = {
-        'School of Medicine': [
-            { name: 'Cardiology' }, { name: 'Neurology' }, { name: 'Oncology' }, { name: 'Pediatrics' }, { name: 'Psychiatry' },
-            { name: 'Radiology' }, { name: 'Surgery' }, { name: 'Dermatology' }, { name: 'Anesthesiology' }, { name: 'Emergency Medicine' },
-            { name: 'Family Medicine' }, { name: 'Gastroenterology' }, { name: 'Orthopedics' }, { name: 'Pathology' }, { name: 'Ophthalmology' },
-            { name: 'Urology' }
-        ],
-        'School of Public Health': [
-            { name: 'Epidemiology' }, { name: 'Biostatistics' }, { name: 'Environmental Health' }, { name: 'Health Policy and Management' }
-        ],
-        'Arts & Sciences': [
-            { name: 'Biology' }, { name: 'Chemistry' }, { name: 'Mathematics' }, { name: 'Physics' }
-        ],
-        'School of Nursing': [
-            { name: 'Clinical Nursing' }, { name: 'Community Health Nursing' }
-        ],
-        'Primate Center': [
-            { name: 'Primatology' }, { name: 'Primate Behavior' }, { name: 'Primate Genetics' }
-        ]
-    };
-
-    //create schools and departments
-    for (const school of schools) {
-        const createdSchool = await createSchool(school);
-        for (const department of departments[school.schoolName]) {
-            await createDept({
-                name: dept.name,
-                deptID: uuid.v4().slice(0, 10), // Generate a short unique id
-                rasName: 'RAS Placeholder', // This should be linked to an actual RAS Unit
-                deptChair: 'Chair Placeholder',
-                deptChairEmail: 'chair@example.com',
-                deptChairPhone: '1234567890',
-                deptAdmin: 'Admin Placeholder',
-                deptAdminEmail: 'admin@example.com',
-                deptAdminPhone: '1234567890',
-                schoolName: createdSchool.schoolName
-            });
-        }
-    }
-
-    const createAssignment = async ({ user_id, dept_id }) => {
-        const SQL = `
-        INSERT INTO assignments(id, user_id, dept_id) VALUES($1, $2, $3) RETURNING *
-    `;
-        const response = await client.query(SQL, [uuid.v4(), user_id, dept_id]);
-        return response.rows[0];
-    };
-
-    const destroyAssignment = async ({ user_id, id }) => {
-        const SQL = `
-        DELETE FROM assignments WHERE user_id=$1 AND id=$2
-    `;
-        await client.query(SQL, [user_id, id]);
-    };
-
-    const authenticate = async ({ username, password }) => {
-        const SQL = `
+const authenticate = async ({ username, password }) => {
+    const SQL = `
         SELECT id, username, password FROM users WHERE username=$1;
     `;
-        const response = await client.query(SQL, [username]);
-        if (response.rows.length || (await bcrypt.compare(password, response.rows[0].password)) === false) {
-            const error = Error('bad credentials');
-            error.status = 401;
-            throw error;
-        }
-        const token = await jwt.sign({ id: response.rows[0].id }, JWT);
-        return { token };
-    };
+    const response = await client.query(SQL, [username]);
+    if (response.rows.length || (await bcrypt.compare(password, response.rows[0].password)) === false) {
+        const error = Error('bad credentials');
+        error.status = 401;
+        throw error;
+    }
+    const token = await jwt.sign({ id: response.rows[0].id }, JWT);
+    return { token };
+};
 
-    // const findUserWithToken = async (token) => {
-    //     let id;
-    //     try {
-    //         const payload = await jwt.verify(token, JWT);
-    //         id = payload.id;
-    //     }
-    //     catch (ex) {
-    //         const error = Error('bad token');
-    //         error.status = 401;
-    //         throw error;
-    //     }
-    //     const SQL = `
-    //         SELECT id, username FROM users WHERE id=$1
-    //     `;
-    //     const response = await client.query(SQL, [id]);
-    //     if (!response.rows.length) {
-    //         const error = Error('bad token');
-    //         error.status = 401;
-    //         throw error;
-    //     }
-    //     return response.rows[0];
-    // };
+const fetchUsers = async () => {
+    const SQL = `
+    SELECT id, username FROM users;
+`;
+    const response = await client.query(SQL);
+    return response.rows;
+};
 
-    const fetchUsers = async () => {
-        const SQL = `
-        SELECT id, username FROM users;
+const fetchDepartments = async () => {
+    const SQL = `
+    SELECT id, name FROM departments;
     `;
-        const response = await client.query(SQL);
-        return response.rows;
-    };
+    const response = await client.query(SQL);
+    return response.rows;
+};
 
-    const fetchDepartments = async () => {
-        const SQL = `
-        SELECT id, name FROM departments;
+const fetchAssignments = async (user_id) => {
+    const SQL = `
+    SELECT * FROM assignments WHERE user_id=$1
     `;
-        const response = await client.query(SQL);
-        return response.rows;
-    };
+    const response = await client.query(SQL, [user_id]);
+    return response.rows;
+};
 
-    const fetchAssignments = async (user_id) => {
-        const SQL = `
-        SELECT * FROM assignments WHERE user_id=$1
+const createAssignment = async ({ user_id, dept_id }) => {
+    const SQL = `
+        INSERT INTO assignments(id, user_id, dept_id) VALUES($1, $2, $3) RETURNING *
     `;
-        const response = await client.query(SQL, [user_id]);
-        return response.rows;
-    };
+    const response = await client.query(SQL, [uuid.v4(), user_id, dept_id]);
+    return response.rows[0];
+};
 
-    module.exports = {
-        client,
-        createTables,
-        createUser,
-        createDept,
-        createAssignment,
-        destroyAssignment,
-        authenticate,
-        fetchUsers,
-        fetchDepartments,
-        fetchAssignments
-    };
+const destroyAssignment = async ({ user_id, id }) => {
+    const SQL = `
+        DELETE FROM assignments WHERE user_id=$1 AND id=$2
+    `;
+    await client.query(SQL, [user_id, id]);
+};
+
+
+
+module.exports = {
+    client,
+    createTables,
+    createUser,
+    createDept,
+    authenticate,
+    fetchUsers,
+    fetchDepartments,
+    fetchAssignments,
+    createAssignment,
+    destroyAssignment
+};

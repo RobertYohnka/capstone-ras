@@ -3,16 +3,18 @@ const {
     createTables,
     createUser,
     createDept,
-    createAssignment,
-    destroyAssignment,
     authenticate,
     fetchUsers,
     fetchDepartments,
-    fetchAssignments
+    fetchAssignments,
+    createAssignment,
+    destroyAssignment
 } = require('./db');
 const express = require('express');
 const app = express();
 app.use(express.json());
+
+
 
 app.get('/api/users', async (req, res, next) => {
     try {
@@ -32,9 +34,14 @@ app.get('/api/departments', async (req, res, next) => {
     }
 });
 
-app.get('/api/assignments/:user_id', async (req, res, next) => {
+app.get('/api/users/:id/assignments', async (req, res, next) => {
     try {
-        res.send(await fetchAssignments(req.params.user_id));
+        if (req.user.id !== req.params.id) {
+            const error = Error('not authorized');
+            error.status = 401;
+            throw error;
+        }
+        res.send(await fetchAssignments(req.params.id));
     }
     catch (ex) {
         next(ex);
@@ -42,8 +49,22 @@ app.get('/api/assignments/:user_id', async (req, res, next) => {
 });
 
 //add get request here for rasUnits
+app.get('/api/rasUnits', async (req, res, next) => {
+    try {
+        res.send(await fetchRasUnits());
+    } catch (ex) {
+        next(ex);
+    }
+});
 
 //add get request here for investigators
+app.get('/api/investigators', async (req, res, next) => {
+    try {
+        res.send(await fetchInvestigators());
+    } catch (ex) {
+        next(ex);
+    }
+});
 
 //add get request here for roles
 app.get('/api/roles', async (req, res, next) => {
@@ -55,9 +76,14 @@ app.get('/api/roles', async (req, res, next) => {
     }
 });
 
-app.post('/api/users/:user_id/assignments', async (req, res, next) => {
+app.post('/api/users/:id/assignments', async (req, res, next) => {
     try {
-        res.status(201).send(await createAssignment({ user_id: req.params.user_id, dept_id: req.body.dept_id }));
+        if (req.user.id !== req.params.id) {
+            const error = Error('not authorized');
+            error.status = 401;
+            throw error;
+        }
+        res.status(201).send(await createAssignment({ user_id: req.params.id, dept_id: req.body.dept_id }));
     }
     catch (ex) {
         next(ex);
@@ -66,7 +92,12 @@ app.post('/api/users/:user_id/assignments', async (req, res, next) => {
 
 app.delete('/api/users/:user_id/assignments/:id', async (req, res, next) => {
     try {
-        await destroyAssignment({ id: req.params.id, user_id: req.params.user_id });
+        if (req.user.id !== req.params.user_id) {
+            const error = Error('not authorized');
+            error.status = 401;
+            throw error;
+        }
+        await destroyAssignment({ user_id: req.params.user_id, id: req.params.id });
         res.sendStatus(204);
     }
     catch (ex) {
@@ -75,51 +106,63 @@ app.delete('/api/users/:user_id/assignments/:id', async (req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-    res.status(err.status || 500).send({ error: err.message || err });
+    console.log(err);
+    res.status(err.status || 500).send({ error: err.message ? err.message : err });
 });
 
 const init = async () => {
-    console.log('connecting to the database');
     const port = process.env.PORT || 3000;
     await client.connect();
     console.log('connected to database');
+
     await createTables();
     console.log('tables created');
 
-    const [chris, hayli, amanda, sarah, emma, fran, jill, pathology, dermatology, urology, emergMedicine, neurology, obGyn, surgery] = await Promise.all([
-        createUser({ username: 'chris', password: 'ch_pw' }),
-        createUser({ username: 'hayli', password: 'ha_pw' }),
-        createUser({ username: 'amanda', password: 'am_pw' }),
-        createUser({ username: 'sarah', password: 'sa_pw' }),
-        createUser({ username: 'emma', password: 'em_pw' }),
-        createUser({ username: 'fran', password: 'fr_pw' }),
-        createUser({ username: 'jill', password: 'ji_pw' }),
-        createDept({ name: 'pathology' }),
-        createDept({ name: 'dermatology' }),
-        createDept({ name: 'urology' }),
-        createDept({ name: 'emergMedicine' }),
-        createDept({ name: 'neurology' }),
-        createDept({ name: 'obGyn' }),
-        createDept({ name: 'surgery' }),
+    const school = await createSchool({
+        schoolName: 'School of Medicine',
+        schoolDean: 'Dr. Dean'
+    });
+
+    const dept = await createDept({
+        name: 'Cardiology',
+        deptID: uuid.v4().slice(0, 8),
+        rasName: 'Default RAS',
+        deptChair: 'Dr. Chair',
+        deptChairEmail: 'chair@example.com',
+        deptChairPhone: '1234567890',
+        deptAdmin: 'Admin Placeholder',
+        deptAdminEmail: 'admin@example.com',
+        deptAdminPhone: '1234567890',
+        schoolName: 'School of Medicine'
+    });
+
+    const [moe, lucy] = await Promise.all([
+        createUser({
+            username: 'moe',
+            password: 'm_pw',
+            empID: '0474123',
+            jobTitle: 'Researcher',
+            jobRole: 'Default Role',
+            rasName: 'Default RAS',
+            email: 'moe@example.com',
+            phoneNumber: '1234567890'
+        }),
+        createUser({
+            username: 'lucy',
+            password: 'l_pw',
+            empID: '0587454',
+            jobTitle: 'Research Assistant',
+            jobRole: 'Default Role',
+            rasName: 'Default RAS',
+            email: 'lucy@example.com',
+            phoneNumber: '1234567890'
+        })
     ]);
 
     console.log(await fetchUsers());
     console.log(await fetchDepartments());
 
-    const [assignment1, assignment2, assignment3, assignment4, assignment5, assignment6] = await Promise.all([
-        createAssignment({ user_id: chris.id, dept_id: pathology.id }),
-        createAssignment({ user_id: hayli.id, dept_id: dermatology.id }),
-        createAssignment({ user_id: amanda.id, dept_id: urology.id }),
-        createAssignment({ user_id: sarah.id, dept_id: emergMedicine.id }),
-        createAssignment({ user_id: emma.id, dept_id: neurology.id }),
-        createAssignment({ user_id: fran.id, dept_id: obGyn.id }),
-        createAssignment({ user_id: jill.id, dept_id: surgery.id }),
-    ]);
 
-    console.log(await fetchAssignments());
-    await destroyAssignment({ id: assignment1.id, user_id: assignment1.user_id });
-    console.log(await fetchAssignments());
-    const assignment = await createAssignment({ user_id: chris.id, dept_id: pathology.id });
     app.listen(port, () => console.log(`listening on port ${port}`));
 };
 
